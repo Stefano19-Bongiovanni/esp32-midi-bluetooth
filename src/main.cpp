@@ -1,102 +1,111 @@
 #include <Arduino.h>
 #include <NimBLEDevice.h>
+#include "ble_midi.h"
 
-#define ROWS 8
+#define NOTE_STARTS_FROM 3;
+/* #define ROWS 8
 #define COLUMNS 8
 
-bool noteMatrix[ROWS * COLUMNS] = {false};
+const int PINS_ROWS[] = {2, 3, 4, 5, 6, 7, 8, 9};
+const int PINS_COLUMNS[] = {10, 11, 12, 13, 14, 15, 16, 17}; */
 
-const int pairButtonPin = 2;
+#define ROWS 2
+#define COLUMNS 2
 
-#define SERVICE_UUID "03B80E5A-EDE8-4B33-A751-6CE34EC4C700"        // MIDI BLE Service
-#define CHARACTERISTIC_UUID "7772E5DB-3868-4112-A1A9-F2669D106BF3" // MIDI BLE Characteristic
-
-bool deviceConnected = false;
-NimBLECharacteristic *midiCharacteristic;
-
-class MyServerCallbacks : public NimBLEServerCallbacks
-{
-  void onConnect(NimBLEServer *pServer)
-  {
-    deviceConnected = true;
-    Serial.println("Device connected.");
-  }
-
-  void onDisconnect(NimBLEServer *pServer)
-  {
-    deviceConnected = false;
-    Serial.println("Device disconnected.");
-  }
+const int PINS_ROWS[] = {
+    12,
+    14,
+};
+const int PINS_COLUMNS[] = {
+    26,
+    27,
 };
 
-void sendMessage(uint8_t *message, uint8_t messageSize)
-{
-  uint8_t packet[messageSize + 2];
+bool notesMatrix[ROWS * COLUMNS] = {false};
 
-  auto t = millis();
-  uint8_t headerByte = (1 << 7) | ((t >> 7) & ((1 << 6) - 1));
-  uint8_t timestampByte = (1 << 7) | (t & ((1 << 7) - 1));
-
-  packet[0] = headerByte;
-  packet[1] = timestampByte;
-  for (int i = 0; i < messageSize; i++)
-    packet[i + 2] = message[i];
-
-  midiCharacteristic->setValue(packet, messageSize + 2);
-  midiCharacteristic->notify();
-}
-
-void sendNoteOn(uint8_t note)
-{
-  uint8_t midiData[] = {144, note, 127};
-  sendMessage(midiData, 3);
-}
-
-void sendNoteOff(uint8_t note)
-{
-  uint8_t midiData[] = {128, note, 127};
-  sendMessage(midiData, 3);
-}
+const int pairButtonPin = 2;
 
 void setup()
 {
   Serial.begin(115200);
-  pinMode(pairButtonPin, INPUT_PULLUP);
 
-  // BLE init
-  NimBLEDevice::init("ESP32-BLE-MIDI");
-  NimBLEServer *pServer = NimBLEDevice::createServer();
-  pServer->setCallbacks(new MyServerCallbacks());
+  // pinMode(pairButtonPin, INPUT_PULLUP);
+  initBleMidi("ESP32-BLE-MIDI");
 
-  // MIDI Service
-  NimBLEService *pMidiService = pServer->createService(SERVICE_UUID);
-  midiCharacteristic = pMidiService->createCharacteristic(
-      CHARACTERISTIC_UUID,
-      NIMBLE_PROPERTY::READ |
-          NIMBLE_PROPERTY::WRITE |
-          NIMBLE_PROPERTY::NOTIFY);
+  for (int i = 0; i < COLUMNS; i++)
+  {
+    pinMode(PINS_COLUMNS[i], INPUT_PULLUP);
+  }
+}
+uint8_t convertNote(int iNote)
+{
+  return iNote + 21 + NOTE_STARTS_FROM;
+}
 
-  pMidiService->start();
-  Serial.println("pMidiService started");
+void setChange(int iNote, bool value)
+{
+  Serial.print("CHANGE ON NOTE ");
+  Serial.print(iNote);
+  Serial.print(" VALUE: ");
+  Serial.println(value);
+  notesMatrix[iNote] = value;
 
-  // Start advertising
-  NimBLEAdvertising *pAdvertising = NimBLEDevice::getAdvertising();
-  pAdvertising->addServiceUUID(SERVICE_UUID);
-  pAdvertising->setScanResponse(true);
+  if (deviceConnected)
+  {
 
-  pAdvertising->start();
-  Serial.println("Waiting a client connection to notify...");
+    if (value)
+    {
+      sendNoteOn(convertNote(convertNote(iNote)));
+    }
+    else
+    {
+      sendNoteOff(convertNote(convertNote(iNote)));
+    }
+  }
+}
+
+void readKeys()
+{
+  for (int row = 0; row < ROWS; row++)
+  {
+
+    // set all pins to INPUT
+    for (int i = 0; i < ROWS; i++)
+    {
+      pinMode(PINS_ROWS[i], INPUT);
+    }
+    pinMode(PINS_ROWS[row], OUTPUT);
+    digitalWrite(PINS_ROWS[row], LOW);
+    delayMicroseconds(1000);
+
+    for (int column = 0; column < COLUMNS; column++)
+    {
+      int matrixIndex = row * COLUMNS + column;
+      bool value = !digitalRead(PINS_COLUMNS[column]);
+
+      if (notesMatrix[matrixIndex] != value)
+        setChange(matrixIndex, value);
+    }
+  }
+  // Serial.print("\n\n");
+
+  // int row = (ROWS * COLUMNS) / iNote;
+  // int column = (ROWS * COLUMNS) % iNote;
 }
 
 void loop()
 {
-  if (deviceConnected)
-  {
-    sendNoteOn(0x3C);
-    Serial.println("Note on");
-    delay(1000);
-    sendNoteOff(0x3C);
-    Serial.println("Note off");
-    delay(2000);
-  }
+
+  readKeys();
+  // delay(500);
+  /*  if (deviceConnected)
+   {
+     sendNoteOn(0x3C);
+     Serial.println("Note on");
+     delay(1000);
+     sendNoteOff(0x3C);
+     Serial.println("Note off");
+     delay(2000);
+   } */
+  delay(1);
 }
