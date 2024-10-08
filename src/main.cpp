@@ -2,16 +2,17 @@
 #include <NimBLEDevice.h>
 #include "ble_midi.h"
 
-#define NOTE_STARTS_FROM 3;
-/* #define ROWS 8
+#define NOTE_STARTS_FROM 3
+#define NOTE_THRESHOLD 3800
+#define ROWS 8
 #define COLUMNS 8
 
-const int PINS_ROWS[] = {2, 3, 4, 5, 6, 7, 8, 9};
-const int PINS_COLUMNS[] = {10, 11, 12, 13, 14, 15, 16, 17}; */
+const int PINS_ROWS[] = {12, 14, 27, 26, 25, 33, 32, 21}; // G35 --> G21
+const int PINS_COLUMNS[] = {18, 5, 17, 16, 4, 19, 2, 15}; // G0 --> G19
 
+/*
 #define ROWS 2
 #define COLUMNS 2
-
 const int PINS_ROWS[] = {
     12,
     14,
@@ -19,7 +20,7 @@ const int PINS_ROWS[] = {
 const int PINS_COLUMNS[] = {
     26,
     27,
-};
+}; */
 
 bool notesMatrix[ROWS * COLUMNS] = {false};
 
@@ -30,11 +31,11 @@ void setup()
   Serial.begin(115200);
 
   // pinMode(pairButtonPin, INPUT_PULLUP);
-  initBleMidi("ESP32-BLE-MIDI");
+  initBleMidi("EKO Panda61");
 
   for (int i = 0; i < COLUMNS; i++)
   {
-    pinMode(PINS_COLUMNS[i], INPUT_PULLUP);
+    pinMode(PINS_COLUMNS[i], INPUT_PULLDOWN);
   }
 }
 uint8_t convertNote(int iNote)
@@ -44,10 +45,10 @@ uint8_t convertNote(int iNote)
 
 void setChange(int iNote, bool value)
 {
-  Serial.print("CHANGE ON NOTE ");
+  /* Serial.print("CHANGE ON NOTE ");
   Serial.print(iNote);
   Serial.print(" VALUE: ");
-  Serial.println(value);
+  Serial.println(value); */
   notesMatrix[iNote] = value;
 
   if (deviceConnected)
@@ -96,8 +97,8 @@ void readKeys()
 void loop()
 {
 
-  readKeys();
-  // delay(500);
+  // readKeys();
+  delay(10);
   /*  if (deviceConnected)
    {
      sendNoteOn(0x3C);
