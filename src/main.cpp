@@ -2,25 +2,15 @@
 #include <NimBLEDevice.h>
 #include "ble_midi.h"
 
-#define NOTE_STARTS_FROM 3
-#define NOTE_THRESHOLD 3800
+#define NOTE_STARTS_FROM -9
 #define ROWS 8
 #define COLUMNS 8
 
-const int PINS_ROWS[] = {12, 14, 27, 26, 25, 33, 32, 21}; // G35 --> G21
-const int PINS_COLUMNS[] = {18, 5, 17, 16, 4, 19, 2, 15}; // G0 --> G19
+#define DEBUG_SERIAL false
 
-/*
-#define ROWS 2
-#define COLUMNS 2
-const int PINS_ROWS[] = {
-    12,
-    14,
-};
-const int PINS_COLUMNS[] = {
-    26,
-    27,
-}; */
+const int PINS_ROWS[] = {12, 14, 27, 26, 25, 33, 32, 21}; // G35 --> G21
+
+const int PINS_COLUMNS[] = {18, 4, 19, 2, 15, 16, 17, 5}; // G0 --> G19
 
 bool notesMatrix[ROWS * COLUMNS] = {false};
 
@@ -35,7 +25,14 @@ void setup()
 
   for (int i = 0; i < COLUMNS; i++)
   {
-    pinMode(PINS_COLUMNS[i], INPUT_PULLDOWN);
+    pinMode(PINS_COLUMNS[i], INPUT_PULLUP);
+    if (DEBUG_SERIAL)
+    {
+      Serial.print("COLUMN: ");
+      Serial.print(i);
+      Serial.print(" PIN: ");
+      Serial.println(PINS_COLUMNS[i]);
+    }
   }
 }
 uint8_t convertNote(int iNote)
@@ -45,10 +42,7 @@ uint8_t convertNote(int iNote)
 
 void setChange(int iNote, bool value)
 {
-  /* Serial.print("CHANGE ON NOTE ");
-  Serial.print(iNote);
-  Serial.print(" VALUE: ");
-  Serial.println(value); */
+
   notesMatrix[iNote] = value;
 
   if (deviceConnected)
@@ -85,28 +79,30 @@ void readKeys()
       bool value = !digitalRead(PINS_COLUMNS[column]);
 
       if (notesMatrix[matrixIndex] != value)
+      {
+        if (DEBUG_SERIAL)
+        {
+          Serial.print("R: ");
+          Serial.print(row);
+          Serial.print(" P: ");
+          Serial.print(PINS_ROWS[row]);
+          Serial.print(" | C: ");
+          Serial.print(column);
+          Serial.print(" P: ");
+          Serial.print(PINS_COLUMNS[column]);
+          Serial.print(" | V: ");
+          Serial.println(value);
+        }
         setChange(matrixIndex, value);
+      }
     }
   }
-  // Serial.print("\n\n");
-
-  // int row = (ROWS * COLUMNS) / iNote;
-  // int column = (ROWS * COLUMNS) % iNote;
 }
 
 void loop()
 {
 
-  // readKeys();
-  delay(10);
-  /*  if (deviceConnected)
-   {
-     sendNoteOn(0x3C);
-     Serial.println("Note on");
-     delay(1000);
-     sendNoteOff(0x3C);
-     Serial.println("Note off");
-     delay(2000);
-   } */
-  delay(1);
+  readKeys();
+
+  delay(5);
 }
