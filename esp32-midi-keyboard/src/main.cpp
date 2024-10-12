@@ -99,10 +99,20 @@ void readKeys()
   }
 }
 
+void sendRandomMidi()
+{
+  sendNoteOn(41);
+  Serial.println("Note on");
+  delay(2000);
+  sendNoteOff(41);
+  Serial.println("Note off");
+  delay(3000);
+}
+
 void loop()
 {
-
-  readKeys();
+  sendRandomMidi();
+  // readKeys();
 
   delay(5);
 }
