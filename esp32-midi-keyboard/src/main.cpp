@@ -2,7 +2,7 @@
 #include <NimBLEDevice.h>
 #include "ble_midi.h"
 
-#define NOTE_STARTS_FROM -9
+#define NOTE_STARTS_FROM 18
 #define ROWS 8
 #define COLUMNS 8
 
@@ -21,7 +21,11 @@ void setup()
   Serial.begin(115200);
 
   // pinMode(pairButtonPin, INPUT_PULLUP);
+  if (DEBUG_SERIAL)
+    Serial.println("Initializing...");
   initBleMidi("EKO Panda61");
+  if (DEBUG_SERIAL)
+    Serial.println("Bluetooth initialized");
 
   for (int i = 0; i < COLUMNS; i++)
   {
@@ -37,7 +41,7 @@ void setup()
 }
 uint8_t convertNote(int iNote)
 {
-  return iNote + 21 + NOTE_STARTS_FROM;
+  return iNote + NOTE_STARTS_FROM;
 }
 
 void setChange(int iNote, bool value)
@@ -111,8 +115,8 @@ void sendRandomMidi()
 
 void loop()
 {
-  sendRandomMidi();
-  // readKeys();
+  // sendRandomMidi();
+  readKeys();
 
   delay(5);
 }
